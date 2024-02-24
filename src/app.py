@@ -1,6 +1,7 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from config import config
 from flask_mysqldb import MySQL
+from validaciones import *
 
 app = Flask(__name__)
 
@@ -21,11 +22,13 @@ def listar_usuarios():
     except Exception as ex:
         return jsonify({'mensaje': "Error"})
     
+
+
 @app.route('/usuarios/<id>', methods = ['GET'])    
 def leer_usuario(id):
     try:
         cursor = conexion.connection.cursor()
-        sql = "SELECT id, usuario, email, contraseña, rol FROM usuario WHERE id = '{0}'".format(id)
+        sql = "SELECT id, usuario, email, contraseña, rol FROM usuarios WHERE id = '{0}'".format(id)
         cursor.execute(sql)
         datos = cursor.fetchone()
         if datos != None:
@@ -36,9 +39,55 @@ def leer_usuario(id):
     except Exception as ex:
         return jsonify({'mensaje': "Error"})
     
-def pagina_no_encontrada(error):
-    return "<h1>La pagina que intentas buscar no existe... </h1>"
 
+
+@app.route('/usuarios', methods = ['POST'])    
+def registrar_usuario():
+        try:
+            cursor = conexion.connection.cursor()
+            sql = """INSERT INTO usuarios (id, usuario, email, contraseña, rol) 
+            VALUES ({0}, '{1}', '{2}', '{3}', '{4}')""".format(request.json['id'],
+            request.json['usuario'],request.json['email'],request.json['contraseña'],
+            request.json['rol'])
+            cursor.execute(sql)
+            conexion.connection.commit()
+            return jsonify({'mensaje': "Usuario registrado"})
+        except Exception as ex:
+            return jsonify({'mensaje': "Usuario ya registrado"})
+    
+
+
+@app.route('/usuarios/<id>', methods = ['DELETE'])
+def eliminar_usuario(id):
+    try:
+        cursor = conexion.connection.cursor()
+        sql = "DELETE FROM usuarios WHERE id = '{0}'".format(id)
+        cursor.execute(sql)
+        conexion.connection.commit()
+        return jsonify({'mensaje': "Usuario eliminado"})
+    except Exception as ex:
+        return jsonify({'mensaje': "Error"})
+
+
+
+@app.route('/usuarios/<id>', methods = ['PUT'])
+def actualizar_usuario(id):
+    try:
+        cursor = conexion.connection.cursor()
+        sql = """UPDATE usuarios SET usuario = '{0}', 
+        email = '{1}', contraseña = '{2}', rol = '{3}' WHERE id = '{4}'""".format(
+        request.json['usuario'],request.json['email'],request.json['contraseña'],
+        request.json['rol'], id)
+        cursor.execute(sql)
+        conexion.connection.commit()
+        return jsonify({'mensaje': "Usuario actualizado"})
+    except Exception as ex:
+        return jsonify({'mensaje': "Error"})
+     
+
+
+def pagina_no_encontrada(error):
+    return "<h1>La pagina que intentas buscar no existe... </h1>", 404
 if __name__ == '__main__':
     app.config.from_object(config['development'])
     app.register_error_handler(404, pagina_no_encontrada)
